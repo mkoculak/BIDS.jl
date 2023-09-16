@@ -57,20 +57,50 @@ Current version is not handling modality agnostic files:
 - Code
 =#
 mutable struct Dataset
+    Path::String
     Description::Description
     README::String
     CHANGES::Union{String, Nothing}
     LICENSE::Union{String, Nothing}
-    Participants::Union{Dict, Nothing}
-    ParticipantsInfo::Union{DataFrame, Nothing}
+    Participants::Union{DataFrame, Nothing}
     ParticipantsMeta::Union{Dict, Nothing}
+    ParticipantsData::Union{DataFrame, Nothing}
     Samples::Union{DataFrame, Nothing}
     SamplesMeta::Union{Dict, Nothing}
 end
 
-abstract type Modality end
+function _dir_contents(absPath::String)
+    objects = readdir(absPath)
+    folders = filter(x -> isdir(joinpath(absPath, x)), objects)
+    files = filter(x -> isfile(joinpath(absPath, x)), objects)
+    return folders, files
+end
 
-struct EEG <: Modality end
+function _get_subjects(absPath::String)
+    folders, files = _dir_contents(absPath)
+    return filter(startswith("sub-"), folders)
+end
+
+function _get_sub_structure(datasetPath::String, subject::String, modalities::Vector{NamedTuple}; session="")
+    folders, files = _dir_contents(joinpath(datasetPath, subject, session))
+
+    sessions = filter(startswith("ses-"), folders)
+    if isempty(sessions)
+        map(mod -> push!(modalities, (sub=subject, ses=session, mod=mod)), folders)
+    else
+        for session in sessions
+            _get_sub_structure(datasetPath,subject, modalities, session=session)
+        end
+    end
+end
+
+function _get_modalities(datasetPath::String, subjects::Vector{String})
+    modalities = NamedTuple[]
+    for subject in subjects
+        _get_sub_structure(datasetPath, subject, modalities)
+    end
+    return DataFrame(modalities)
+end
 
 function Dataset(dir::AbstractString)
     datasetPath = abspath(dir)
@@ -105,12 +135,11 @@ function Dataset(dir::AbstractString)
         license = nothing
     end
 
-    subFolders = filter(startswith("sub-"), readdir(datasetPath))
-    participants = Dict{String, Dict{String, Modality}}()
+    subjects = _get_subjects(datasetPath)
+    participantsData = _get_modalities(datasetPath, subjects)
 
-
-    participantsInfoPath = joinpath(dir, "participants.tsv")
-    participantsInfo = isfile(participantsInfoPath) ? CSV.read(participantsInfoPath, delim="\t", DataFrame) : nothing
+    participantsPath = joinpath(dir, "participants.tsv")
+    participants = isfile(participantsPath) ? CSV.read(participantsPath, delim="\t", DataFrame) : nothing
     participantsMetaPath = joinpath(dir, "participants.json")
     participantsMeta = isfile(participantsMetaPath) ? JSON3.read(participantsMetaPath, Dict{Symbol, TabularMeta}) : nothing
 
@@ -119,5 +148,5 @@ function Dataset(dir::AbstractString)
     samplesMetaPath = joinpath(dir, "samples.json")
     samplesMeta = isfile(samplesMetaPath) ? JSON3.read(samplesMetaPath, Dict{Symbol, TabularMeta}) : nothing
 
-    return Dataset(description, readme, changes, license, participants, participantsInfo, participantsMeta, samples, samplesMeta)
+    return Dataset(datasetPath, description, readme, changes, license, participants, participantsMeta, participantsData, samples, samplesMeta)
 end
