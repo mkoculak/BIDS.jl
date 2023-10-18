@@ -21,7 +21,7 @@ function _parse_mod_files!(::Type{EEG}, path, mod, modalities, modalityRow)
     # Ignore the last section that contains modality specific descriptor and extension
     sections = map(x -> split.(basename(x), '_')[1:end-1], files)
 
-    uniqueElements = unique(sections)
+    uniqueElements = _get_unique_elements(sections)
 
     for element in uniqueElements
         row = copy(modalityRow)
@@ -30,14 +30,14 @@ function _parse_mod_files!(::Type{EEG}, path, mod, modalities, modalityRow)
             row[col] = val
         end
         
-        sameFiles = filter(x -> contains(x, join(element, '_')), files)
+        sameFiles = _get_all_subset_files(element, sections, files)
         ext = map(x -> splitext(x)[2], sameFiles)
 
         if ".bdf" in ext
             param = BDF
         elseif ".edf" in ext
             param = EDF
-        elseif ".egg" in ext
+        elseif ".eeg" in ext
             param = BVF
         elseif ".set" in ext
             param = SET

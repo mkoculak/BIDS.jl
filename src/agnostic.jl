@@ -235,7 +235,7 @@ function _get_scans(lay, path, files)
 
         return Scans(recordings, metadata)
     else
-        return nothing
+        return string()
     end
 end
 
@@ -270,21 +270,13 @@ function _get_modalities(lay::Layout, subjects::Vector{String})
         _get_sub_structure!(lay, subject, modalities)
     end
 
+    # Merge all rows into one dataframe
     modFrame = DataFrame(dictrowtable(modalities))
 
-    # Check if file labels match the folder its in.
-    if modFrame[!, "participant_id"] != "sub-" .* modFrame[!, "sub"]
-        @warn "Folder $path contains files for a different subject ($(row["sub"])"
-    end
-    select!(modFrame, Not(:sub))
+    # Replace all missings with empty strings
+    mapcols!(x -> replace(x, missing => string()), modFrame)
 
-    if "ses" in names(modFrame)
-        if modFrame[!, :session] != "ses-" .* modFrame[!, :ses]
-            @warn "Folder $path contains files for a different session ($(row["ses"]))"
-        end
-        select!(modFrame, Not(:ses))
-    end
-
+    # Reorder columns
     select!(modFrame, :participant_id, :session, :scans, Not([:participant_id, :session, :scans, :files]), :files)
     return modFrame
 end
@@ -309,10 +301,10 @@ function _get_data(lay::Layout, participants::Union{Participants, Nothing})
         fileMore = setdiff(partFile, partDir)
         dirMore = setdiff(partDir, partFile)
         if !isempty(fileMore)
-            @warn "File participants.tsv contains entries without a subfolder: $(join(fileMore, ", "))"
+            @warn "File participants.tsv contains entries without a subfolder: $(join(fileMore, ", "))" _id="participants"
         end
         if !isempty(dirMore)
-            @warn "There are subfolders not included as participants.tsv entries: $(join(dirMore, ", "))"
+            @warn "There are subfolders not included as participants.tsv entries: $(join(dirMore, ", "))" _id="participants"
         end
     end
 
@@ -366,7 +358,7 @@ function _parse_phenotype_files(lay, file, fileRoot, root, session)
         metaPath = ""
     end
 
-    phenotype = read_tsv(dir, filePath, DataFrame)
+    phenotype = read_tsv(lay, filePath, DataFrame)
     if isempty(metaPath)
         metadata = nothing
     else
