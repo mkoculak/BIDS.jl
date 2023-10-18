@@ -83,3 +83,4 @@ function Base.show(io::IO, dataset::Dataset)
     print_line(io, "Path", dataset.Path)
 end
 
+browse(dataset::Dataset; kwargs...) = browse(dataset.Layout; kwargs...)
