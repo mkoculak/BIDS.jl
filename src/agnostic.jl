@@ -68,7 +68,8 @@ function Description(lay::Layout)
 
     # Missing file
     if !isfile(descriptionPath)
-        throw(ArgumentError("Required file dataset_description.json not found in folder: $(datasetPath)"))
+        @warn "Required file dataset_description.json not found in folder: $(datasetPath)" _id="description"
+        return nothing
     end
 
     description = open(descriptionPath) do fid
@@ -81,8 +82,8 @@ function Description(lay::Layout)
             orgFile = JSON3.read(fid)
             unsupported = filter(x -> !(x in fieldnames(Description)), keys(orgFile))
             if !isempty(unsupported)
-                @warn """File dataset_description.json contains keys unsupported by the current version of BIDS($BIDSVersion):
-                        \t   $(join(unsupported, ", "))"""
+                @warn """File dataset_description.json contains keys unsupported by the current version of BIDS($BIDSVersion): \
+                $(join(unsupported, ", "))""" _id="description"
             end
 
             return description
@@ -142,10 +143,10 @@ function _get_plaintext(lay::Layout, filename::String, missWarn::Bool)
     textFiles = filter(contains(filename), readdir(datasetPath))
 
     if isempty(textFiles)
-        missWarn && @warn "No $filename file was found in the root directory."
-        return nothing
+        missWarn && @warn "No $filename file was found in the root directory." _id=filename
+        return "" #nothing
     elseif length(textFiles) > 1
-        @warn "More than one $filename file in the root directory. Reading the first found: $(textFiles[1])"
+        @warn "More than one $filename file in the root directory. Reading the first found: $(textFiles[1])" _id=filename
     end
 
     textPath = joinpath(datasetPath, textFiles[1])
