@@ -21,7 +21,7 @@ mutable struct Layout <: FBNode
     file_count::Int64
 end
 
-function Layout(dir::String, full=true)
+function Layout(dir::String; full=true)
     # Deal with trailing slashes
     dir = rstrip(dir, ['\\', '/'])
     path = abspath(dir)

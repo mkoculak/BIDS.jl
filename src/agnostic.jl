@@ -68,7 +68,8 @@ function Description(lay::Layout)
 
     # Missing file
     if !isfile(descriptionPath)
-        throw(ArgumentError("Required file dataset_description.json not found in folder: $(datasetPath)"))
+        @warn "Required file dataset_description.json not found in folder: $(datasetPath)" _id="description"
+        return nothing
     end
 
     description = open(descriptionPath) do fid
@@ -81,8 +82,8 @@ function Description(lay::Layout)
             orgFile = JSON3.read(fid)
             unsupported = filter(x -> !(x in fieldnames(Description)), keys(orgFile))
             if !isempty(unsupported)
-                @warn """File dataset_description.json contains keys unsupported by the current version of BIDS($BIDSVersion):
-                        \t   $(join(unsupported, ", "))"""
+                @warn """File dataset_description.json contains keys unsupported by the current version of BIDS($BIDSVersion): \
+                $(join(unsupported, ", "))""" _id="description"
             end
 
             return description
@@ -142,10 +143,10 @@ function _get_plaintext(lay::Layout, filename::String, missWarn::Bool)
     textFiles = filter(contains(filename), readdir(datasetPath))
 
     if isempty(textFiles)
-        missWarn && @warn "No $filename file was found in the root directory."
-        return nothing
+        missWarn && @warn "No $filename file was found in the root directory." _id=filename
+        return "" #nothing
     elseif length(textFiles) > 1
-        @warn "More than one $filename file in the root directory. Reading the first found: $(textFiles[1])"
+        @warn "More than one $filename file in the root directory. Reading the first found: $(textFiles[1])" _id=filename
     end
 
     textPath = joinpath(datasetPath, textFiles[1])
@@ -234,7 +235,7 @@ function _get_scans(lay, path, files)
 
         return Scans(recordings, metadata)
     else
-        return nothing
+        return string()
     end
 end
 
@@ -269,21 +270,13 @@ function _get_modalities(lay::Layout, subjects::Vector{String})
         _get_sub_structure!(lay, subject, modalities)
     end
 
+    # Merge all rows into one dataframe
     modFrame = DataFrame(dictrowtable(modalities))
 
-    # Check if file labels match the folder its in.
-    if modFrame[!, "participant_id"] != "sub-" .* modFrame[!, "sub"]
-        @warn "Folder $path contains files for a different subject ($(row["sub"])"
-    end
-    select!(modFrame, Not(:sub))
+    # Replace all missings with empty strings
+    mapcols!(x -> replace(x, missing => string()), modFrame)
 
-    if "ses" in names(modFrame)
-        if modFrame[!, :session] != "ses-" .* modFrame[!, :ses]
-            @warn "Folder $path contains files for a different session ($(row["ses"]))"
-        end
-        select!(modFrame, Not(:ses))
-    end
-
+    # Reorder columns
     select!(modFrame, :participant_id, :session, :scans, Not([:participant_id, :session, :scans, :files]), :files)
     return modFrame
 end
@@ -308,10 +301,10 @@ function _get_data(lay::Layout, participants::Union{Participants, Nothing})
         fileMore = setdiff(partFile, partDir)
         dirMore = setdiff(partDir, partFile)
         if !isempty(fileMore)
-            @warn "File participants.tsv contains entries without a subfolder: $(join(fileMore, ", "))"
+            @warn "File participants.tsv contains entries without a subfolder: $(join(fileMore, ", "))" _id="participants"
         end
         if !isempty(dirMore)
-            @warn "There are subfolders not included as participants.tsv entries: $(join(dirMore, ", "))"
+            @warn "There are subfolders not included as participants.tsv entries: $(join(dirMore, ", "))" _id="participants"
         end
     end
 
@@ -365,7 +358,7 @@ function _parse_phenotype_files(lay, file, fileRoot, root, session)
         metaPath = ""
     end
 
-    phenotype = read_tsv(dir, filePath, DataFrame)
+    phenotype = read_tsv(lay, filePath, DataFrame)
     if isempty(metaPath)
         metadata = nothing
     else

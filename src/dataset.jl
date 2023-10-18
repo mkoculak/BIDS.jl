@@ -1,20 +1,24 @@
 mutable struct Dataset
     Path::String
     Layout::Layout
-    Description::Description
-    README::String
-    CHANGES::Union{String, Nothing}
-    LICENSE::Union{String, Nothing}
-    Participants::Union{Participants, Nothing}
-    Data::Union{DataFrame, Nothing}
-    Samples::Union{Samples, Nothing}
-    Phenotypes::Union{DataFrame, Nothing}
-    Code::Union{String, Nothing}
+    Description::Union{Description, Nothing}    # required
+    README::Union{String, Nothing}              # required
+    CHANGES::Union{String, Nothing}             # optional
+    LICENSE::Union{String, Nothing}             # optional
+    Participants::Union{Participants, Nothing}  # recomended
+    Data::Union{DataFrame, Nothing}             # required
+    Samples::Union{Samples, Nothing}            # required if samples used in dataset
+    Phenotypes::Union{DataFrame, Nothing}       # optional
+    Code::Union{String, Nothing}                # optional
 end
 
 function Dataset(dir::AbstractString, browser=true)
+    # Prepare logging mechanism
+    empty!(warnings)
+    old_logger = global_logger(demux_loger);
+
     # Map folders and files of the dataset
-    layout = Layout(dir, browser)
+    layout = Layout(dir; full=browser)
 
     # Parse dataset description (mandatory file)
     description = Description(layout)
@@ -53,6 +57,10 @@ function Dataset(dir::AbstractString, browser=true)
     # Count files in code folder, if it exists
     code = _get_code(layout)
 
+    # Return the original logger
+    global_logger(old_logger);
+    report_warnings()
+
     return Dataset(layout.path, layout, description, readme, changes, license, participants, 
                 data, samples, phenotypes, code)
 end
@@ -75,3 +83,4 @@ function Base.show(io::IO, dataset::Dataset)
     print_line(io, "Path", dataset.Path)
 end
 
+browse(dataset::Dataset; kwargs...) = browse(dataset.Layout; kwargs...)
