@@ -40,7 +40,7 @@ function _check_label(row, pathLabel, fileLabel)
     delete!(row, fileLabel)
 end
 
-function _parse_mod_files!(::Type{Generic}, path, mod, modalities, modalityRow)
+function _parse_mod_files!(::Type{Generic}, lay, path, mod, modalities, modalityRow)
     files = readdir(joinpath(path, mod))
     # Ignore the last section that contains modality specific descriptor and extension
     sections = map(x -> split.(basename(x), '_')[1:end-1], files)
@@ -76,10 +76,10 @@ const parsers = Dict{String, Type{<:Modality}}(
     "other" => Generic
 )
 
-function _parse_mod_files!(path::String, mod::String, modalities, modalityRow)
+function _parse_mod_files!(lay::Layout, path::String, mod::String, modalities, modalityRow)
     if mod ∈ keys(parsers)
-        _parse_mod_files!(parsers[mod], path, mod, modalities, modalityRow)
+        _parse_mod_files!(parsers[mod], lay, path, mod, modalities, modalityRow)
     else
-        _parse_mod_files!(parsers["other"], path, mod, modalities, modalityRow)
+        _parse_mod_files!(parsers["other"], lay, path, mod, modalities, modalityRow)
     end
 end
