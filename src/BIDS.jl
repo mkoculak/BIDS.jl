@@ -17,6 +17,7 @@ include("agnostic.jl")
 export Description
 
 include("modalities.jl")
+include("modalities/task_events.jl")
 include("modalities/EEG.jl")
 
 include("helpers.jl")

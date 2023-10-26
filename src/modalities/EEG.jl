@@ -169,11 +169,12 @@ mutable struct EEG{T<:EEGFile} <: Modality
     Description::Union{EEGDescription, Nothing}
     Channels::EEGChannels
     Electrodes::EEGElectrodes
-    path::String
-    files::Vector{String}
+    Events::Events
+    Path::String
+    Files::Vector{String}
 end
 
-Base.show(io::IO, eeg::EEG{T}) where T = print(io, "EEG{$(split(string(T),'.')[2])} ($(length(eeg.files)) files)")
+Base.show(io::IO, eeg::EEG{T}) where T = print(io, "EEG{$(split(string(T),'.')[2])} ($(length(eeg.Files)) files)")
 
 
 function _parse_mod_files!(::Type{EEG}, lay, path, mod, modalities, modalityRow)
@@ -217,7 +218,10 @@ function _parse_mod_files!(::Type{EEG}, lay, path, mod, modalities, modalityRow)
         # Parse the Electrodes and Coordsystem files
         electrodes = _get_eeg_electrodes(lay, cwd, sameFiles)
 
-        row["files"] = EEG{param}(description, channels, electrodes, path, sameFiles)
+        # Parse the Events files
+        events = _get_events(lay, cwd, sameFiles)
+
+        row["files"] = EEG{param}(description, channels, electrodes, events, path, sameFiles)
 
         # Check if subject label from file matches the path and remove the one from file
         _check_label(row, "participant_id", "sub")
