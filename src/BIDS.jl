@@ -13,11 +13,12 @@ const BIDSVersion = "1.8.0"
 include("file_browser.jl")
 export Layout, browse
 
-include("modalities.jl")
-include("modalities/EEG.jl")
-
 include("agnostic.jl")
 export Description
+
+include("modalities.jl")
+include("modalities/task_events.jl")
+include("modalities/EEG.jl")
 
 include("helpers.jl")
 export show_warnings

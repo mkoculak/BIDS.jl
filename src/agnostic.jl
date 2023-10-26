@@ -254,7 +254,7 @@ function _get_sub_structure!(lay::Layout, subject::String, modalities::Vector{Di
         
         for mod in folders
             modalityRow["modality"] = mod
-            _parse_mod_files!(path, mod, modalities, modalityRow)
+            _parse_mod_files!(lay, path, mod, modalities, modalityRow)
         end
 
     else
