@@ -1,17 +1,64 @@
+"""
+    Dataset
+
+Main structure holding all the information related to a BIDS dataset. It contains all the
+modality agnostic information as separate fields, `Data` field that holds all the modality 
+specific information, `Layout` representing the file structure, and path to the dataset.
+
+Where applicable, information is stored in custom structures named after the related BIDS 
+entities. We try to extract as much information as possible from text-based files, while 
+indexing all modality specific files as paths that one can pass to software tools that can
+read them.
+
+### Fields
+Name | Type | Req. level | Description
+:--- | :--- | :--------- | :----------
+Path | `String` | Required | Path to the dataset
+Layout | `Layout` | Required | File structure of the dataset
+Description | `UN{Description}` | Required | Description of the dataset
+README | `UN{String}` | Required | README file content
+CHANGES | `UN{String}` | Optional | CHANGES file content
+LICENSE | `UN{String}` | Optional | LICENSE file content
+Participants | `UN{Participants}` | Recommended | Participants data
+Data | `UN{DataFrame}` | Required | Modality specific data
+Samples | `UN{Samples}` | Required | Samples data
+Phenotypes | `UN{DataFrame}` | Optional | Phenotype data
+Code | `UN{String}` | Optional | Code files content
+
+`UN{T}` is an alias for `Union{Nothing, T}`.
+"""
 mutable struct Dataset
     Path::String
     Layout::Layout
-    Description::Union{Description, Nothing}    # required
-    README::Union{String, Nothing}              # required
-    CHANGES::Union{String, Nothing}             # optional
-    LICENSE::Union{String, Nothing}             # optional
-    Participants::Union{Participants, Nothing}  # recomended
-    Data::Union{DataFrame, Nothing}             # required
-    Samples::Union{Samples, Nothing}            # required if samples used in dataset
-    Phenotypes::Union{DataFrame, Nothing}       # optional
-    Code::Union{String, Nothing}                # optional
+    Description::UN{Description}    # required
+    README::UN{String}              # required
+    CHANGES::UN{String}             # optional
+    LICENSE::UN{String}             # optional
+    Participants::UN{Participants}  # recomended
+    Data::UN{DataFrame}             # required
+    Samples::UN{Samples}            # required if samples used in dataset
+    Phenotypes::UN{DataFrame}       # optional
+    Code::UN{String}                # optional
 end
 
+"""
+    Dataset(dir::AbstractString, browser=true)
+
+Create a BIDS dataset from the given directory.
+
+### Arguments
+- `dir::AbstractString`: Path to the dataset directory
+- `browser::Bool=true`: Whether to map the whole file structure of the dataset
+
+### Returns
+- `dataset::Dataset`
+
+While relying closely on the BIDS specification, function tries to extract as much information
+as possible, even if it does not strictly follow the specification. In such cases, a warning is
+logged that can be later inspected with `show_warnings()` function. However, if the discrepancy
+cannot be easily resolved or is related to information required by the specification, an error
+is thrown.
+"""
 function Dataset(dir::AbstractString, browser=true)
     # Prepare logging mechanism
     empty!(warnings)
@@ -41,9 +88,6 @@ function Dataset(dir::AbstractString, browser=true)
 
     # Read the samples data
     samples = _get_samples(layout)
-
-    # Read the metadata for samples table
-    # samplesMeta = _get_samples_meta(layout)
 
     # Read the phenotype data, if present
     phenotypes = _get_phenotypes(layout)

@@ -8,7 +8,7 @@ import DataStructures: SortedDict, OrderedDict
 import Logging: global_logger, NullLogger, Warn
 import LoggingExtras: TeeLogger, TransformerLogger, EarlyFilteredLogger
 
-const BIDSVersion = "1.8.0"
+const BIDSVersion = "1.10.0"
 
 include("file_browser.jl")
 export Layout, browse

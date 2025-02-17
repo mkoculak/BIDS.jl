@@ -1,44 +1,69 @@
+const UN{T} = Union{Nothing, T}
+const UNV{T} = Union{Nothing, T, AbstractVector{T}}
+
 mutable struct Container
-    Tag::Union{String, Nothing}
-    Type::Union{String, Nothing}
-    URI::Union{String, Nothing}
+    Tag::UN{String}
+    Type::UN{String}
+    URI::UN{String}
 end
 
 mutable struct Generator
-    CodeURL::Union{String, Nothing}
-    Container::Union{Container, Nothing}
-    Description::Union{String, Nothing}
-    Name::Union{String, Nothing}
-    Version::Union{String, Nothing}
+    Name::UN{String}
+    Version::UN{String}
+    Description::UN{String}
+    CodeURL::UN{String}
+    Container::UN{Container}
 end
 
 mutable struct Source
-    DOI::Union{String, Nothing}
-    URL::Union{String, Nothing}
-    Version::Union{String, Nothing}
+    DOI::UN{String}
+    URL::UN{String}
+    Version::UN{String}
 end
 
 """
     Description
 
-    Object containing information from the dataset_description.json file.
+Object containing information from the dataset_description.json file.
+
+### Fields
+Name | Type | Req. level | Description
+:--- | :--- | :--------- | :----------
+Name | `String` | Required | Name of the dataset
+BIDSVersion | `String` | Required | BIDS version used to create the dataset
+HEDVersion | `UNV{String}` | Recommended | HED version used in the dataset
+DatasetLinks | `UN{Dict{String, String}}` | Required | Links to the dataset
+DatasetType | `UN{String}` | Recommended | Type of the dataset
+License | `UN{String}` | Recommended | License type
+Authors | `UN{AbstractVector{String}}` | Recommended | List of authors
+Acknowledgements | `UN{String}` | Optional | Acknowledgement text
+HowToAcknowledge | `UN{String}` | Optional | Instructions how to acknowledge the dataset
+Funding | `UNV{String}` | Optional | Funding sources
+EthicsApprovals | `UN{AV{String}}` | Optional | Ethics approvals
+ReferencesAndLinks | `UN{AV{String}}` | Optional | References and links
+DatasetDOI | `UN{String}` | Optional | DOI of the dataset
+GeneratedBy | `UN{AV{Generator}}` | Recommended | Software used to generate the dataset
+SourceDatasets | `UN{AV{Source}}` | Recommended | Source datasets
+
+Where `UN{T}` is an alias for `Union{Nothing, T}`
+and `UNV{T}` is an alias for `Union{Nothing, T, AbstractVector{T}}`.
 """
 mutable struct Description
-    Name::String                                                # required
-    BIDSVersion::String                                         # required
-    HEDVersion::Union{String, AbstractVector{String}, Nothing}  # recomended
-    DatasetLinks::Union{Dict{String, String}, Nothing}          # required if URIs are used
-    DatasetType::Union{String, Nothing}                         # recomended
-    License::Union{String, Nothing}                             # recomended
-    Authors::Union{AbstractVector{String}, Nothing}             # recomended
-    Acknowledgements::Union{String, Nothing}                    # optional
-    HowToAcknowledge::Union{String, Nothing}                    # optional
-    Funding::Union{AbstractVector{String}, String, Nothing}     # optional
-    EthicsApprovals::Union{AbstractVector{String}, Nothing}     # optional
-    ReferencesAndLinks::Union{AbstractVector{String}, Nothing}  # optional
-    DatasetDOI::Union{String, Nothing}                          # optional
-    GeneratedBy::Union{AbstractVector{Generator}, Nothing}      # recomended
-    SourceDatasets::Union{AbstractVector{Source}, Nothing}      # recomended
+    Name::String                                   # required
+    BIDSVersion::String                            # required
+    HEDVersion::UNV{String}                        # recomended
+    DatasetLinks::UN{Dict{String, String}}         # required if URIs are used
+    DatasetType::UN{String}                        # recomended
+    License::UN{String}                            # recomended
+    Authors::UN{AbstractVector{String}}            # recomended
+    Acknowledgements::UN{String}                   # optional
+    HowToAcknowledge::UN{String}                   # optional
+    Funding::UNV{String}                           # optional
+    EthicsApprovals::UN{AbstractVector{String}}    # optional
+    ReferencesAndLinks::UN{AbstractVector{String}} # optional
+    DatasetDOI::UN{String}                         # optional
+    GeneratedBy::UN{AbstractVector{Generator}}     # recomended
+    SourceDatasets::UN{AbstractVector{Source}}     # recomended
 end
 
 # Check if fields in file match their specifications
@@ -137,6 +162,8 @@ function Base.show(io::IO, description::Description; leadSize=40)
     end
 end
 
+# HANDLING OF PLAINTEXT FILES
+
 function _get_plaintext(lay::Layout, filename::String, missWarn::Bool)
     datasetPath = lay.path
     # Get all the files that have README in their name
@@ -158,26 +185,59 @@ function _get_plaintext(lay::Layout, filename::String, missWarn::Bool)
     return text
 end
 
-mutable struct TabularMeta
-    LongName::Union{String, Nothing}
-    Description::Union{String, Nothing}
-    Levels::Union{SortedDict{String, String}, Nothing}
-    Units::Union{String, Nothing}
-    TermURL::Union{String, Nothing}
-    HED::Union{Dict{String, String}, Nothing}
-    Derivative::Union{Bool, Nothing}
+# HANDLING OF TABULAR DATA
+
+"""
+    TableMetadata
+
+Generic structure for metadata about a column in a tabular file.
+
+### Fields
+Name | Type | Req. level | Description
+:--- | :--- | :--------- | :----------
+LongName | `UN{String}` | Optional | Full name of the variable
+Description | `UN{String}` | Recommended | Free-form natural language description
+Levels | `UN{SortedDict{String, String}}` | Recommended | Mapping for categorical variables
+Units | `UN{String}` | Recommended | Units of measurement
+Delimeter | `UN{String}` | Optional | Delimeter used in the file
+TermURL | `UN{String}` | Recommended | URL to a formal definition of the type of data
+HED | `UN{Dict{String, String}}` | Optional | Hierarchical Event Descriptor information
+Derivative | `UN{Bool}` | - | Whether the variable is a derivative
+"""
+mutable struct TableMetadata
+    LongName::UN{String}                    # optional
+    Description::UN{String}                 # recommended
+    Levels::UN{SortedDict{String, String}}  # recommended
+    Units::UN{String}                       # recommended
+    Delimeter::UN{String}                   # optional
+    TermURL::UN{String}                     # recommended
+    HED::UN{Dict{String, String}}           # optional
+    Derivative::UN{Bool}                    # -
 end
 
+"""
+    Participants
+
+Object containing information from the participants.tsv file.
+
+### Fields
+Name | Type | Description
+:--- | :--- | :----------
+data | `DataFrame` | Tabular data from the file
+metadata | `UN{Dict{Symbol, TableMetadata}}` | Metadata from the associated JSON file
+
+Where `UN{T}` is an alias for `Union{Nothing, T}`
+"""
 mutable struct Participants
     data::DataFrame
-    metadata::Union{Dict{Symbol, TabularMeta}, Nothing}
+    metadata::UN{Dict{Symbol, TableMetadata}}
 end
 
 function _get_participants_meta(lay::Layout)
     participantsMetaPath = joinpath(lay.path, "participants.json")
 
     if isfile(participantsMetaPath)
-        participantsMeta = read_json(lay, participantsMetaPath, Dict{Symbol, TabularMeta})
+        participantsMeta = read_json(lay, participantsMetaPath, Dict{Symbol, TableMetadata})
     else
         participantsMeta = nothing
     end
@@ -205,9 +265,22 @@ function _get_participants(lay::Layout)
     end
 end
 
+"""
+    Scans
+
+Object containing information from the scans.tsv file.
+
+### Fields
+Name | Type | Description
+:--- | :--- | :----------
+data | `DataFrame` | Tabular data from the file
+metadata | `UN{Dict{Symbol, TableMetadata}}` | Metadata from the associated JSON file
+
+Where `UN{T}` is an alias for `Union{Nothing, T}`
+"""
 mutable struct Scans
     data::DataFrame
-    metadata::Union{Dict{Symbol, TabularMeta}, Nothing}
+    metadata::UN{Dict{Symbol, TableMetadata}}
 end
 
 Base.show(io::IO, scans::Scans) = print(io, "$(DataFrames.nrow(scans.data)) timing(s)")
@@ -220,14 +293,14 @@ function _get_scans(lay, path, files)
         # Try to read metadata from the same folder
         metaFile = splitext(scans[1])[1] * ".json"
         if isfile(joinpath(path, metaFile))
-            metadata = read_json(lay, joinpath(path, metaFile), Dict{Symbol, TabularMeta})
+            metadata = read_json(lay, joinpath(path, metaFile), Dict{Symbol, TableMetadata})
         else
             # Try to read a scans.json file shared between sessions
             upPath = dirname(path)
             upDir = readdir(dirname(path))
             metaFile = filter(endswith.("scans.json"), upDir)
             if !isempty(metaFile)
-                metadata = read_json(lay, joinpath(upPath, metaFile[1]), Dict{Symbol, TabularMeta})
+                metadata = read_json(lay, joinpath(upPath, metaFile[1]), Dict{Symbol, TableMetadata})
             else
                 metadata = nothing
             end
@@ -281,7 +354,7 @@ function _get_modalities(lay::Layout, subjects::Vector{String})
     return modFrame
 end
 
-function _get_data(lay::Layout, participants::Union{Participants, Nothing})
+function _get_data(lay::Layout, participants::UN{Participants})
     datasetPath = lay.path
     objects = readdir(datasetPath)
     folders = filter(x -> isdir(joinpath(datasetPath, x)), objects)
@@ -311,16 +384,29 @@ function _get_data(lay::Layout, participants::Union{Participants, Nothing})
     return data
 end
 
+"""
+    Samples
+
+Object containing information from the samples.tsv file.
+
+### Fields
+Name | Type | Description
+:--- | :--- | :----------
+data | `DataFrame` | Tabular data from the file
+metadata | `UN{Dict{Symbol, TableMetadata}}` | Metadata from the associated JSON file
+
+Where `UN{T}` is an alias for `Union{Nothing, T}`
+"""
 mutable struct Samples
     data::DataFrame
-    metadata::Union{Dict{Symbol, TabularMeta}, Nothing}
+    metadata::UN{Dict{Symbol, TableMetadata}}
 end
 
 function _get_samples_meta(lay::Layout)
 
     samplesMetaPath = joinpath(lay.path, "samples.json")
     if isfile(samplesMetaPath)
-        samplesMeta = read_json(lay, samplesMetaPath, Dict{Symbol, TabularMeta})
+        samplesMeta = read_json(lay, samplesMetaPath, Dict{Symbol, TableMetadata})
     else
         samplesMeta = nothing
     end
@@ -342,7 +428,7 @@ end
 
 mutable struct Phenotype
     data::DataFrame
-    metadata::Union{TabularMeta, Nothing}
+    metadata::UN{TableMetadata}
 end
 
 function _parse_phenotype_files(lay, file, fileRoot, root, session)
@@ -362,7 +448,7 @@ function _parse_phenotype_files(lay, file, fileRoot, root, session)
     if isempty(metaPath)
         metadata = nothing
     else
-        metadata = read_json(lay, metaPath, TabularMeta)
+        metadata = read_json(lay, metaPath, TableMetadata)
     end
 
     return (name=name, session=session, phenotype=Phenotype(phenotype, metadata))
@@ -405,9 +491,22 @@ function _get_phenotypes(lay::Layout)
     return phenoFrame
 end
 
+"""
+    Sessions
+
+Object containing information from the *_sessions.tsv file.
+
+### Fields
+Name | Type | Description
+:--- | :--- | :----------
+data | `DataFrame` | Tabular data from the file
+metadata | `UN{Dict{Symbol, TableMetadata}}` | Metadata from the associated JSON file
+
+Where `UN{T}` is an alias for `Union{Nothing, T}`
+"""
 mutable struct Sessions
     data::DataFrame
-    metadata::Union{Dict{Symbol, TabularMeta}, Nothing}
+    metadata::UN{Dict{Symbol, TableMetadata}}
 end
 
 function _get_sessions(lay::Layout)
@@ -427,7 +526,7 @@ function _get_sessions(lay::Layout)
 
             metaFile = splitext(sessFile[1])[1] * ".json"
             if isfile(metaFile)
-                metadata = read_json(lay, metaFile, Dict{Symbol, TabularMeta})
+                metadata = read_json(lay, metaFile, Dict{Symbol, TableMetadata})
             else
                 metadata = nothing
             end
@@ -442,6 +541,8 @@ function _get_sessions(lay::Layout)
         return DataFrame(sessions)
     end
 end
+
+# HANDLING OF CODE DATA
 
 function _get_code(lay::Layout)
     if haskey(lay.children, "code")
